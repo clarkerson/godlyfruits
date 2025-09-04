@@ -60,6 +60,24 @@ body{
   /* if you're using the canvas snapshot approach, keep these */
   #chart{ display:none !important; }
   #chartPrint{ display:block !important; max-width:100% !important; height:auto !important; }
+  /* When body has .print-score, print ONLY the scoring card */
+    body.print-score header,
+    body.print-score #graphCard,
+    body.print-score #directionsCard,
+    body.print-score #questionsCard{
+    display:none !important;
+    }
+    body.print-score #scoreCard{
+    display:block !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    }
+    body.print-score #scoreCard .body{
+    max-height:none !important;    /* remove the scroll cap for print */
+    overflow:visible !important;   /* let it spill to multiple pages */
+    }
+  /* Ensure the whole graph card prints on desktop */
+    #graphCard{ display:block !important; }
 
     /* Make the printed graph area white (the snapshot PNG is transparent) */
   #graphCard .body{ background:#fff !important; }
@@ -205,7 +223,9 @@ body{
   }
 
   /* Mobile tweaks */
-@media (max-width: 760px){
+@media screen and (max-width: 760px){
+  /* Hide the entire graph card on small screens */
+  #graphCard{ display:none !important; }
   #scoreCard .body{ max-height: 58vh; }
   /* Title & brand */
   header{ padding:24px 14px 4px; }
@@ -285,6 +305,17 @@ body{
 #chartPrint{
   display:none;
 }
+
+    /* Hidden by default; revealed on mobile */
+    .mobileOnly{ display:none; }
+
+    /* Mobile-only display for the new Save Results button in Directions */
+    @media screen and (max-width:760px){
+    .mobileOnly{ display:inline-flex; }
+    }
+
+    /* hidden by default; we reveal on small screens */
+    .mobileChartNote{ display:none; color:#6b78a8; margin-top:8px; font-size:14px; }
 
   .instr{padding-left:18px; margin:0; font-size:22px; color:#303647 }
   .instr li{margin:10px 0}
@@ -369,6 +400,7 @@ body{
       <div id="chartWrap">
         <canvas id="chart" width="2200" height="680"></canvas>
         <img id="chartPrint" alt="Chart print snapshot">
+        <p class="mobileChartNote">Chart is best viewed on a larger screen.</p>
       </div>
     </div>
   </section>
@@ -377,12 +409,13 @@ body{
   <section class="glass" id="directionsCard" style="grid-area:directions">
     <div class="head">
       <h2>Directions <span class="emoji"></span></h2>
+            <button class="btn-cta mobileOnly" id="printScoreMobile" style="margin-left:auto">Save Results</button>
     </div>
     <div class="body">
       <ul class="instr">
-        <li><span class="emoji">⚖️ </span>  This is not a test—be honest and go with your gut.</li>
-        <li><span class="emoji">🎨 </span>  Scale: 5=Highly true, 4=Mostly, 3=Frequently, 2=Occasionally, 1=Not at all.</li>
-        <li><span class="emoji">⚡️</span>  Quick instincts beat overthinking.</li>
+        <li><span class="emoji">⚖️ </span>  This is not a test—be honest</li>
+        <li><span class="emoji">🎨 </span>  Scale: 5=Highly true → 1=Not at all.</li>
+        <li><span class="emoji">⚡️</span>  Use gut instincts</li>
         <li><span class="emoji">🕰️</span>  Answer all 80 items. Work at your own pace.</li>
       </ul>
     </div>
@@ -572,6 +605,27 @@ document.getElementById('printBtn').addEventListener('click', async () => {
   setTimeout(() => window.scrollTo({ top: previousY, left: 0, behavior: 'auto' }), 100);
 });
 
+// Mobile: print the Scoring card only
+document.getElementById('printScoreMobile')?.addEventListener('click', async () => {
+  const previousY = window.scrollY;
+
+  // Mark score-only print mode and jump to top
+  document.body.classList.add('print-score');
+  window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+
+  // Let layout settle before printing
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+  // Open print dialog
+  window.print();
+
+  // Clean up and restore scroll after the dialog opens
+  setTimeout(() => {
+    document.body.classList.remove('print-score');
+    window.scrollTo({ top: previousY, left: 0, behavior: 'auto' });
+  }, 100);
+});
+
 
 function getAnswer(n){ return answers[n] || 0; }
 function sum(arr){return arr.reduce((a,b)=>a+b,0)}
@@ -587,26 +641,41 @@ function shortName(name){
   return map[name] || name;
 }
 function computeScores(){
-  return gifts.map(([name, items]) => ({name, items, total: sum(items.map(getAnswer))}));
+  // include original index so tiles can map back to chart bars
+  return gifts.map(([name, items], idx) => ({
+    idx,
+    name,
+    items,
+    total: sum(items.map(getAnswer))
+  }));
 }
 
 const tilesWrap = document.getElementById('tiles');
 let highlightIndex = -1;
 function renderTiles(scores){
+  // always show tiles in score-desc order
+  const sorted = [...scores].sort((a,b) => b.total - a.total);
+
   tilesWrap.innerHTML = '';
-  scores.forEach((s, idx) => {
+  sorted.forEach((s) => {
     const tile = document.createElement('button');
     tile.className = 'tile';
-    tile.setAttribute('data-idx', idx);
+    tile.setAttribute('data-idx', s.idx);
     tile.innerHTML = `
       <h3>${s.name}</h3>
       <div class="bigTotal">${s.total}<small>/25</small></div>
       <progress max="25" value="${s.total}"></progress>
     `;
-    tile.addEventListener('click', () => highlightBar(idx));
+    // clicking a tile still highlights the correct bar via original idx
+    tile.addEventListener('click', () => highlightBar(s.idx));
     tilesWrap.appendChild(tile);
   });
-  Array.from(tilesWrap.children).forEach((el, i)=> el.classList.toggle('selected', i===highlightIndex));
+
+  // keep the selected style in sync (selected compares against highlightIndex)
+  Array.from(tilesWrap.children).forEach((el) => {
+    const idx = Number(el.getAttribute('data-idx'));
+    el.classList.toggle('selected', idx === highlightIndex);
+  });
 }
 
 const canvas = document.getElementById('chart');
@@ -648,6 +717,7 @@ function drawChart(scores){
   const barW = (chartW - (n+1)*gap)/n;
 
   scores.forEach((s, i) => {
+    const isHighlighted = (highlightIndex < 0) || (s.idx === highlightIndex);
     const x = pL + gap + i*(barW+gap);
     const h = (s.total/25)*chartH;
     const y = H - pB - h;
@@ -656,7 +726,7 @@ function drawChart(scores){
     grad.addColorStop(0, 'rgba(63,123,255,1)');
     grad.addColorStop(1, 'rgba(138,107,255,1)');
     ctx.fillStyle = grad;
-    ctx.globalAlpha = (i===highlightIndex || highlightIndex<0) ? 1 : .35;
+    ctx.globalAlpha = isHighlighted ? 1 : .35;
 
     const r = 10;
     ctx.beginPath();
@@ -721,8 +791,8 @@ document.getElementById('sortScore').addEventListener('click', () => {
 
 function computeAndRender(){
   const raw = computeScores();
-  const ordered = currentOrder.map(i => raw[i]);
-  renderTiles(ordered);
+  const ordered = currentOrder.map(i => raw[i]); // chart order (A→Z or by score)
+  renderTiles(raw);                               // tiles always auto-sort desc
   drawChart(ordered);
   // keep the print image current after each render
   try{
