@@ -320,6 +320,32 @@ body{
   .instr{padding-left:18px; margin:0; font-size:22px; color:#303647 }
   .instr li{margin:10px 0}
   .emoji{font-size:22px; margin-right:8px}
+  /* Mobile-only helper hint at bottom of Directions card */
+.mobile-save-hint{
+  display:none;                /* hidden on desktop */
+  margin-top:12px;
+  padding:10px 12px;
+  border-radius:12px;
+  background:linear-gradient(180deg,#ffffff, #eef4ff);
+  border:1px solid #e8efff;
+  color:#6b78a8;
+  font-size:14px;
+  line-height:1.4;
+  gap:8px;
+  align-items:center;
+}
+.mobile-save-hint .share-ico{
+  width:32px;
+  height:32px;
+  fill:#6b78a8;
+  flex:0 0 auto;
+  margin:0 4px;
+  vertical-align:middle;
+}
+/* show only on phones */
+@media screen and (max-width:760px){
+  .mobile-save-hint{ display:flex; }
+}
 
   .score-tiles{
     display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:14px;
@@ -418,6 +444,15 @@ body{
         <li><span class="emoji">⚡️</span>  Use gut instincts</li>
         <li><span class="emoji">🕰️</span>  Answer all 80 items. Work at your own pace.</li>
       </ul>
+            <div class="mobile-save-hint">
+        <span>When finished, hit <strong>Save Results</strong>, tap</span>
+        <!-- Universal inline SVG share icon -->
+        <svg class="share-ico" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3c.41 0 .75.34.75.75v8.38l2.47-2.47a.75.75 0 0 1 1.06 1.06l-3.89 3.89a.75.75 0 0 1-1.06 0l-3.89-3.89a.75.75 0 0 1 1.06-1.06l2.47 2.47V3.75c0-.41.34-.75.75-.75Z"/>
+          <path d="M6.5 10a.75.75 0 0 0-1.5 0v7.25A2.75 2.75 0 0 0 7.75 20h8.5A2.75 2.75 0 0 0 19 17.25V10a.75.75 0 0 0-1.5 0v7.25c0 .69-.56 1.25-1.25 1.25h-8.5c-.69 0-1.25-.56-1.25-1.25V10Z"/>
+        </svg>
+        <span>and text a copy to yourself.</span>
+      </div>
     </div>
   </section>
 
