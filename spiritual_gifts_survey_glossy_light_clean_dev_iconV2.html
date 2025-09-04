@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="https://fonts.googleapis.com/css2?family=Lobster&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Chicle&display=swap" rel="stylesheet">
+<title>Spiritual Gifts Survey — Glossy Light (Clean, Dev Icon)</title>
+<style>
+  :root{
+    --bg:#eef3fb;
+    --ink:#0e1735;
+    --muted:#6b78a8;
+    --panel:#f8fbff;
+    --line:#e4ecfb;
+    --accent:#3f7bff;
+    --accent2:#16c8a8;
+    --violet:#8a6bff;
+    --warn:#ffbe5a;
+    --radius:22px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+body{
+  margin:0;
+  color:var(--ink);
+  background:
+    radial-gradient(1200px 700px at -5% -10%, rgba(63,123,255,.14), transparent 60%),
+    radial-gradient(1000px 600px at 100% 0%, rgba(22,200,168,.12), transparent 60%),
+    linear-gradient(180deg, #f4f7ff, var(--bg));
+  font:18px/1.6 ui-rounded, "SF Pro Rounded", Inter, "Segoe UI", system-ui, -apple-system;
+
+  /* Better scrolling + touch handling */
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;  /* prevents iOS zoom on form fields */
+  -webkit-tap-highlight-color: transparent; /* removes gray tap highlight */
+  touch-action: manipulation;      /* makes buttons feel snappier */
+}
+
+@media print{
+    @page { size: landscape; margin: 0.25in; }
+
+  /* Hide the graph card header and its buttons during print */
+      #graphCard .head > button{ display:none !important; }  /* keep title, hide buttons */
+
+  /* Remove glossy overlays that can tint pages when printed */
+    .glass::after{ display:none !important; }
+
+  /* keep colors + gradients where possible */
+  *{-webkit-print-color-adjust:exact; print-color-adjust:exact;}
+
+  /* print ONLY the title (header) + first graph card */
+  header{ display:block !important; }
+  #directionsCard, #scoreCard, #questionsCard{ display:none !important; }
+
+  /* keep the same width you use on screen so it looks consistent */
+  .wrap{ max-width:1400px !important; padding-top:0 !important; padding-bottom:0 !important; }
+  .glass{ box-shadow:none; border:0 }  /* optional: flatter print look */
+
+  /* if you're using the canvas snapshot approach, keep these */
+  #chart{ display:none !important; }
+  #chartPrint{ display:block !important; max-width:100% !important; height:auto !important; }
+
+    /* Make the printed graph area white (the snapshot PNG is transparent) */
+  #graphCard .body{ background:#fff !important; }
+  #chartWrap{ background:#fff !important; box-shadow:none !important; border-color:#e9f0ff !important; }
+  #chartPrint{ background:#fff !important; }  /* belt-and-suspenders */
+
+    /* Keep the entire graph card on one page */
+  #graphCard{
+    break-inside: avoid;
+    page-break-inside: avoid;
+    overflow: visible !important;  /* avoid clipping in print */
+    box-shadow: none !important;   /* shadows increase the printable box */
+  }
+
+    /* Shrink the graph content so it fits on one page.
+     Use zoom for print—Chrome paginates based on the zoomed size. */
+  #graphCard .body{
+    zoom: 0.85;                /* tweak: 0.80–0.90 */
+    transform: none !important; /* ensure we’re not mixing with scale() */
+  }
+
+  /* Print-only height for the graph wrapper */
+  #chartWrap{ height:500px !important; }  /* was 560px on screen */
+
+    /* Shrink the entire graph card slightly to force 1-page print */
+  #graphCard{
+    transform: scale(0.92);
+    transform-origin: top center;
+  }
+
+  /* >>> THIS is the part that fixes the missing score text <<< */
+  .bigTotal{
+    background:none !important;
+    -webkit-background-clip:initial !important;
+    background-clip:initial !important;
+    color:#0b1230 !important;
+    -webkit-text-fill-color:#0b1230 !important;
+    text-shadow:none !important;
+  }
+  .bigTotal small{
+    color:#0b1230 !important;           /* ensure “/25” prints too */
+    -webkit-text-fill-color:#0b1230 !important;
+  }
+}
+
+  .glass{
+    background:linear-gradient(180deg, rgba(255,255,255,.85), rgba(255,255,255,.6));
+    border-radius:var(--radius);
+    border:1px solid #f1f6ff;
+    box-shadow:0 18px 40px rgba(28,44,84,.10),
+               inset 0 1px 0 rgba(255,255,255,.9),
+               inset 0 -1px 0 rgba(20,30,60,.06);
+    overflow:hidden; position:relative;
+  }
+  .glass::after{
+    content:""; position:absolute; inset:0; pointer-events:none; border-radius:inherit;
+    background: radial-gradient(70% 50% at 10% 0%, rgba(255,255,255,.75), transparent 60%),
+                radial-gradient(40% 30% at 90% 0%, rgba(255,255,255,.55), transparent 60%);
+    mix-blend-mode:screen;
+  }
+
+  .btn{
+    padding:12px 16px; border-radius:14px;
+    background:linear-gradient(180deg, #ffffff, #e9f0ff);
+    color:var(--ink); border:1px solid #e4ecfb;
+    box-shadow:0 10px 20px rgba(28,44,84,.12), inset 0 1px 0 rgba(255,255,255,.9);
+    cursor:pointer; font-weight:800; letter-spacing:.2px;
+    transition:.15s transform ease, .15s box-shadow ease, .15s background ease;
+  }
+  .btn:hover{box-shadow:0 12px 22px rgba(28,44,84,.16), 0 0 0 3px rgba(63,123,255,.15) inset}
+  .btn:active{transform:translateY(1px); box-shadow: inset 0 8px 16px rgba(28,44,84,.12)}
+
+/* Lock sort button text to dark ink on all states (high specificity + guards) */
+.head .controls .btn,
+.head .controls .btn:hover,
+.head .controls .btn:focus,
+.head .controls .btn:active{
+  color:#0e1735 !important;
+  -webkit-text-fill-color:#0e1735 !important; /* Safari */
+  text-shadow:none !important;
+  mix-blend-mode:normal !important;
+  filter:none !important;
+  opacity:1 !important;
+}
+
+  /* Cool gradient blue Print Results button */
+.btn-cta{
+  appearance: none;
+  border: none;
+  cursor: pointer;
+  color: #081122;
+  background: linear-gradient(135deg, #7c9cff, #65e4ff);
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-weight: 700;
+  box-shadow: 0 8px 22px rgba(124,156,255,.25);
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+.btn-cta:hover{
+  filter: brightness(1.05);
+  box-shadow: 0 10px 26px rgba(124,156,255,.35);
+}
+.btn-cta:active{
+  transform: translateY(1px);
+}
+
+  header{padding:34px 20px 8px; text-align:center}
+  .brand{display:inline-flex; align-items:center; gap:0px; padding:0 8px}
+  .brand img{
+    width:56px; height:56px; object-fit:cover; border-radius:14px;
+    border:1px solid #e5edff;
+    box-shadow:0 10px 20px rgba(28,44,84,.10), inset 0 1px 0 rgba(255,255,255,.9);
+  }
+.brand img{
+    width:120px; height:120px;           /* ⬅️ bigger size */
+    object-fit:contain;                /* ⬅️ preserves full image without cropping */
+    border-radius:16px;                /* ⬅️ slightly more round corners */
+    background:transparent;            /* ⬅️ removes white fill */
+    border:none;                       /* ⬅️ no border (optional) */
+    box-shadow:none;                   /* ⬅️ remove shadow if you want a clean look */
+}
+
+  h1{
+    margin:0 0 6px;
+    font-size:clamp(44px, 6vw, 80px);
+        font-family: 'Lobster', cursive;
+    font-weight:1000; letter-spacing:.2px;
+    background: conic-gradient(from 200deg at 50% 50%, #3f7bff, #7a7dff, #16c8a8, #3f7bff);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    filter: drop-shadow(0 10px 24px rgba(28,44,84,.12));
+  }
+  .wrap{max-width:1400px; margin:0 auto; padding:0 16px 52px}
+  .grid{
+    display:grid; gap:18px;
+    grid-template-columns:1fr;
+    grid-template-areas:"graph" "directions" "score" "survey";
+  }
+  @media (min-width:1100px){
+    .grid{
+      grid-template-columns: 1.15fr 1fr;
+      grid-template-areas:"graph graph" "directions directions" "score survey";
+    }
+  }
+
+  /* Mobile tweaks */
+@media (max-width: 760px){
+  #scoreCard .body{ max-height: 58vh; }
+  /* Title & brand */
+  header{ padding:24px 14px 4px; }
+  .brand img{ width:64px; height:64px; }
+  h1{ font-size: clamp(36px, 10vw, 56px); }
+
+  /* Graph card: give the canvas less vertical space on phones */
+  #chartWrap{ height: 380px !important; }
+
+  /* Sort/Print buttons wrap nicely */
+  .head .controls{
+    gap:8px;
+    margin-left: 0;
+    width:100%;
+    justify-content:flex-start;
+  }
+  .head .controls .btn,
+  .head .controls .btn-cta{
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  /* Survey: keep the sticky header, shrink row padding, bigger tap targets */
+  .qrow{ gap:10px; padding:12px 10px; }
+  .qtext{ font-size:16px; }
+  .rate{
+    min-width:50px;
+    height:50px;
+    font-size:16px;
+    border-radius:12px;
+  }
+
+  /* Scoring tiles: 2-up on phones */
+    /* Make the scoring card scrollable within a fixed space */
+  #scoreCard .body{
+    max-height: 60vh;
+    overflow: auto;
+  }
+  .score-tiles{ grid-template-columns: repeat(2, minmax(0,1fr)); gap:10px; }
+  .tile{ min-height:120px; padding:14px; }
+  .tile h3{ font-size:16px; }
+  .bigTotal{ font-size:34px; }
+}
+
+  .head{
+    padding:16px 20px;
+    border-bottom:1px solid #edf3ff;
+    display:flex; align-items:center; gap:10px;
+    background:linear-gradient(180deg, #ffffff, #f0f5ff);
+  }
+  .head h2{margin:0; font-size:30px; font-weight:900; color:var(--muted)}
+    .sticky-head{ position:sticky; top:0; z-index:5; }
+  @media (max-width:760px){
+    .sticky-head{ top:0; }  /* keep it pinned; adjust if you add a fixed navbar later */
+  }
+
+  .body{padding:18px 20px}
+  .controls{display:flex; flex-wrap:wrap; gap:10px; margin-bottom:12px}
+
+  /* Prevent disabled look from washing the text out */
+.controls .btn[disabled]{
+  opacity:1 !important;
+  color:#0e1735 !important;
+  -webkit-text-fill-color:#0e1735 !important;
+}
+
+  #chartWrap{height:560px; position:relative}
+#chart{
+    width:100%; height:100%; display:block; border-radius:18px;
+    background:
+      radial-gradient(80% 120% at 50% -10%, rgba(63,123,255,.18), transparent 60%),
+      radial-gradient(80% 80% at 100% 0%, rgba(22,200,168,.12), transparent 60%),
+      linear-gradient(180deg, #ffffff, #f1f6ff);
+    border:1px solid #e9f0ff;
+    box-shadow: inset 0 18px 36px rgba(28,44,84,.06), inset 0 -18px 36px rgba(143,166,255,.10);
+}
+#chartPrint{
+  display:none;
+}
+
+  .instr{padding-left:18px; margin:0; font-size:22px; color:#303647 }
+  .instr li{margin:10px 0}
+  .emoji{font-size:22px; margin-right:8px}
+
+  .score-tiles{
+    display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:14px;
+  }
+  @media (min-width:760px){ .score-tiles{grid-template-columns: repeat(3, minmax(0,1fr));} }
+  @media (min-width:1180px){ .score-tiles{grid-template-columns: repeat(4, minmax(0,1fr));} }
+  .tile{
+    padding:18px; border-radius:18px;
+    background:linear-gradient(180deg, #ffffff, #eef4ff);
+    border:1px solid #e8efff;
+    box-shadow:0 14px 28px rgba(28,44,84,.10), inset 0 1px 0 rgba(255,255,255,.9);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
+    min-height:140px; cursor:pointer; transition:.15s transform ease, .15s box-shadow ease;
+  }
+  .tile:hover{transform:translateY(-1px)}
+  .tile.selected{box-shadow: inset 0 12px 24px rgba(28,44,84,.12), inset 0 -12px 24px rgba(143,166,255,.15)}
+  .tile h3{margin:0; font-size:18px}
+  .bigTotal{
+    font-size:40px; font-weight:1000; letter-spacing:.6px;
+    background: linear-gradient(120deg, var(--accent), var(--violet), var(--accent2));
+    -webkit-text-stroke: 0.5px rgba(14,23,53,0.3);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  progress{width:100%; height:16px; border-radius:12px; overflow:hidden; -webkit-appearance:none; appearance:none; background:transparent; border:1px solid #e8efff}
+  progress::-webkit-progress-bar{background:#f6f9ff}
+  progress::-webkit-progress-value{background:linear-gradient(90deg, var(--accent), var(--violet))}
+  progress::-moz-progress-bar{background:linear-gradient(90deg, var(--accent), var(--violet))}
+
+  .questions-card{max-height: 55vh; overflow:auto}
+  .qrow{display:grid; grid-template-columns: 46px 1fr; gap:14px; padding:14px 12px; border-bottom:1px solid #edf3ff}
+  .qtext{margin:0; font-size:18px}
+  .scale{display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:10px}
+  .rate{
+    min-width:58px; height:54px; border-radius:14px;
+    background:linear-gradient(180deg, #ffffff, #eaf1ff);
+    border:1px solid #e4ecfb;
+    box-shadow:0 10px 18px rgba(28,44,84,.10), inset 0 1px 0 rgba(255,255,255,.9);
+    color:#3a4a78; display:inline-flex; align-items:center; justify-content:center;
+    font-weight:900; font-size:18px; cursor:pointer;
+    transition:.15s transform ease, .15s box-shadow ease, .15s color ease, .15s background ease, .15s filter ease;
+  }
+  .rate:hover{filter:brightness(1.05)}
+  .rate:active{transform:translateY(1px)}
+  .rate.active{
+    color:#0e1735;
+    background: radial-gradient(120% 100% at 15% 0%, rgba(63,123,255,.25), transparent 40%),
+                linear-gradient(180deg, #ffffff, #e8f2ff);
+    box-shadow: 0 0 20px rgba(63,123,255,.20), inset 0 10px 20px rgba(28,44,84,.10);
+    border-color:#dfe8ff;
+  }
+</style>
+</head>
+<body>
+<header>
+  <!-- ===== DEV: Paste your icon/logo URL BELOW =====
+       Replace ONLY the value of src="" with your own absolute URL.
+       Example: src="https://yourcdn.com/brand/icon.png"
+       The image renders at 56x56 with rounded corners.
+  -->
+  <div class="brand">
+    <img alt="Logo" src="https://res.cloudinary.com/dxj2ezqej/image/upload/v1756880876/clarkerson_low-poly_simplistic_vector_logo_image_of_a_peach_w_e143fc72-eb8e-4a57-9729-ead0c4f5c0ea_0_jhhqzb.png" />
+    <h1>Spiritual Gifts Survey</h1>
+  </div>
+  <!-- ===== /DEV ===== -->
+</header>
+
+<div class="wrap grid">
+
+  <!-- Graph -->
+  <section class="glass" id="graphCard" style="grid-area:graph">
+    <div class="head">
+      <h2>Graph Your Profile</h2>
+      <button class="btn" id="sortAlpha" style="margin-left:auto">Sort A→Z</button>
+      <button class="btn" id="sortScore">Sort by Score</button>
+      <button class="btn-cta" id="printBtn">Save Results</button>
+    </div>
+    <div class="body">
+      <div id="chartWrap">
+        <canvas id="chart" width="2200" height="680"></canvas>
+        <img id="chartPrint" alt="Chart print snapshot">
+      </div>
+    </div>
+  </section>
+
+  <!-- Directions -->
+  <section class="glass" id="directionsCard" style="grid-area:directions">
+    <div class="head">
+      <h2>Directions <span class="emoji"></span></h2>
+    </div>
+    <div class="body">
+      <ul class="instr">
+        <li><span class="emoji">⚖️ </span>  This is not a test—be honest and go with your gut.</li>
+        <li><span class="emoji">🎨 </span>  Scale: 5=Highly true, 4=Mostly, 3=Frequently, 2=Occasionally, 1=Not at all.</li>
+        <li><span class="emoji">⚡️</span>  Quick instincts beat overthinking.</li>
+        <li><span class="emoji">🕰️</span>  Answer all 80 items. Work at your own pace.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- Scoring -->
+  <section class="glass" id="scoreCard" style="grid-area:score">
+    <div class="head">
+      <h2>Automatic Scoring</h2>
+    </div>
+    <div class="body">
+      <div class="score-tiles" id="tiles"></div>
+    </div>
+  </section>
+
+  <!-- Survey -->
+  <section class="glass" id="questionsCard" style="grid-area:survey">
+    <div class="head sticky-head">
+      <h2>Survey Items (1–80)</h2>
+      <button class="btn" id="clearBtn" style="margin-left:auto">Clear</button>
+    </div>
+    <div class="body questions-card" id="questions"></div>
+  </section>
+</div>
+
+<script>
+/* -------- Data (questions + scoring map) -------- */
+const questions = [
+  "I have the ability to organize ideas, resources, time, and people effectively.",
+  "I am willing to study and prepare for the task of teaching.",
+  "I am able to relate the truths of God to specific situations.",
+  "I have a God-given ability to help others grow in their faith.",
+  "I possess a special ability to communicate the truth of salvation.",
+  "I have the ability to make critical decisions when necessary.",
+  "I am sensitive to the hurts of people.",
+  "I experience joy in meeting needs through sharing possessions.",
+  "I enjoy studying.",
+  "I have delivered God’s message of warning and judgment.",
+  "I am able to sense the true motivation of persons and movements.",
+  "I have a special ability to trust God in difficult situations.",
+  "I have a strong desire to contribute to the establishment of new churches.",
+  "I take action to meet physical and practical needs rather than merely talking about or planning how to help.",
+  "I enjoy entertaining guests in my home.",
+  "I can adapt my guidance to fit the maturity of those working with me.",
+  "I can delegate and assign meaningful work.",
+  "I have an ability and desire to teach.",
+  "I am usually able to analyze a situation correctly.",
+  "I have a natural tendency to encourage others.",
+  "I am willing to take the initiative in helping other Christians grow in their faith.",
+  "I have an acute awareness of other people’s emotions, such as loneliness, pain, fear, and anger.",
+  "I am a cheerful giver.",
+  "I spend time digging into facts.",
+  "I feel that I have a message from God to deliver to others.",
+  "I can recognize when a person is genuine/honest.",
+  "I am a person of vision (a clear mental portrait of a preferable future given by God). I am able to communicate vision in such a way that others commit to making the vision a reality.",
+  "I am willing to yield to God’s will rather than question and waver.",
+  "I would like to be more active in getting the gospel to people in other countries.",
+  "It makes me happy to do things for people in need.",
+  "I am successful in getting a group to do its work joyfully.",
+  "I am able to make strangers feel at ease.",
+  "I have the ability to teach to a variety of different learning styles.",
+  "I can identify those who need encouragement.",
+  "I have trained Christians to be more obedient disciples of Christ.",
+  "I am willing to do whatever it takes to see others come to Christ.",
+  "I am drawn to people who are hurting.",
+  "I am a generous giver.",
+  "I am able to discover new truths in Scripture.",
+  "I have spiritual insights from Scripture concerning issues and people that compel me to speak out.",
+  "I can sense when a person is acting in accordance with God’s will.",
+  "I can trust in God even when things look dark.",
+  "I can determine where God wants a group to go and help it get there.",
+  "I have a strong desire to take the gospel to places where it has never been heard.",
+  "I enjoy reaching out to new people in my church and community.",
+  "I am sensitive to the needs of people.",
+  "I have been able to make effective and efficient plans for accomplishing the goals of a group.",
+  "I often am consulted when fellow Christians are struggling to make difficult decisions.",
+  "I think about how I can comfort and encourage others in my congregation.",
+  "I am able to give spiritual direction to others.",
+  "I am able to present the gospel to lost persons in such a way that they accept the Lord and His salvation.",
+  "I possess an unusual capacity to understand the feelings of those in distress.",
+  "I have a strong sense of stewardship based on the recognition that God owns all things.",
+  "I have delivered to other persons messages that have come directly from God.",
+  "I can sense when a person is acting under God’s leadership.",
+  "I try to be in God’s will continually and be available for His use.",
+  "I feel that I should take the gospel to people who have different beliefs from me.",
+  "I have an acute awareness of the physical needs of others.",
+  "I am skilled in setting forth positive and precise steps of action.",
+  "I like to meet visitors at church and make them feel welcome.",
+  "I explain Scripture in such a way that others understand it.",
+  "I can usually see spiritual solutions to problems.",
+  "I welcome opportunities to help people who need comfort, consolation, encouragement, and counseling.",
+  "I feel at ease in sharing Christ with nonbelievers.",
+  "I can influence other’s to perform to their highest God-given potential.",
+  "I recognize the signs of stress and distress in others.",
+  "I desire to give generously and unpretentiously to worthwhile projects and ministries.",
+  "I can organize facts into meaningful relationships.",
+  "God gives me messages to deliver to His people.",
+  "I am able to sense whether people are being honest when they tell of their religious experiences.",
+  "I enjoy presenting the gospel to persons of other cultures and backgrounds.",
+  "I enjoy doing little things that help people.",
+  "I can give a clear, uncomplicated presentation of the gospel.",
+  "I have been able to apply biblical truth to the specific needs of my church.",
+  "God has used me to encourage others to live Christlike lives.",
+  "I have sensed the need to help other people become more effective in their ministries.",
+  "I like to talk about Jesus to those who do not know Him.",
+  "I have the ability to make strangers feel comfortable in my home.",
+  "I have a wide range of study resources and know how to secure information.",
+  "I feel assured that a situation will change for the glory of God even when the situation seem impossible."
+];
+
+const gifts = [
+  ["Leadership",[6,16,27,43,65]],
+  ["Administration",[1,17,31,47,59]],
+  ["Teaching",[2,18,33,61,73]],
+  ["Knowledge",[9,24,39,68,79]],
+  ["Wisdom",[3,19,48,62,74]],
+  ["Prophecy",[10,25,40,54,69]],
+  ["Discernment",[11,26,41,55,70]],
+  ["Exhortation",[20,34,49,63,75]],
+  ["Shepherding",[4,21,35,50,76]],
+  ["Faith",[12,28,42,56,80]],
+  ["Evangelism",[5,36,51,64,77]],
+  ["Apostleship",[13,29,44,57,71]],
+  ["Service/Helps",[14,30,46,58,72]],
+  ["Mercy",[7,22,37,52,66]],
+  ["Giving",[8,23,38,53,67]],
+  ["Hospitality",[15,32,45,60,78]]
+];
+
+const answers = Array(81).fill(0);
+
+const qWrap = document.getElementById('questions');
+questions.forEach((q, i) => {
+  const idx = i+1;
+  const row = document.createElement('div');
+  row.className = 'qrow';
+  row.innerHTML = `
+    <div class="num"><strong>${idx}.</strong></div>
+    <div>
+      <p class="qtext">${q}</p>
+      <div class="scale" id="scale-${idx}">
+        ${[1,2,3,4,5].map(v => `<button class="rate" data-value="${v}" data-q="${idx}">${v}</button>`).join('')}
+      </div>
+    </div>`;
+  qWrap.appendChild(row);
+});
+
+qWrap.addEventListener('click', (e) => {
+  const btn = e.target.closest('.rate');
+  if(!btn) return;
+  const v = Number(btn.dataset.value);
+  const q = Number(btn.dataset.q);
+  answers[q] = v;
+  const group = document.getElementById(`scale-${q}`);
+  group.querySelectorAll('.rate').forEach(b => b.classList.toggle('active', Number(b.dataset.value)===v));
+  computeAndRender();
+});
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  answers.fill(0);
+  document.querySelectorAll('.rate.active').forEach(b => b.classList.remove('active'));
+  computeAndRender();
+});
+
+// Print Results: scroll to top, snapshot chart (if #chartPrint exists), then open dialog, restore scroll
+document.getElementById('printBtn').addEventListener('click', async () => {
+  const previousY = window.scrollY;
+
+  // Go to top so the PDF starts at the top of the page
+  window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+
+  // Let layout settle
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+  // If you're using a canvas snapshot for print, refresh it (no-op if #chartPrint doesn't exist)
+  try {
+    const img = document.getElementById('chartPrint');
+    if (img && typeof canvas !== 'undefined') {
+      img.src = canvas.toDataURL('image/png');
+    }
+  } catch (e) {}
+
+  // Open print dialog
+  window.print();
+
+  // Put the user back where they were
+  setTimeout(() => window.scrollTo({ top: previousY, left: 0, behavior: 'auto' }), 100);
+});
+
+
+function getAnswer(n){ return answers[n] || 0; }
+function sum(arr){return arr.reduce((a,b)=>a+b,0)}
+function shortName(name){
+  const map = {
+    "Administration":"Admin",
+    "Service/Helps":"Service",
+    "Shepherding":"Shepherd",
+    "Discernment":"Discern",
+    "Evangelism":"Evang",
+    "Hospitality":"Hosp",
+  };
+  return map[name] || name;
+}
+function computeScores(){
+  return gifts.map(([name, items]) => ({name, items, total: sum(items.map(getAnswer))}));
+}
+
+const tilesWrap = document.getElementById('tiles');
+let highlightIndex = -1;
+function renderTiles(scores){
+  tilesWrap.innerHTML = '';
+  scores.forEach((s, idx) => {
+    const tile = document.createElement('button');
+    tile.className = 'tile';
+    tile.setAttribute('data-idx', idx);
+    tile.innerHTML = `
+      <h3>${s.name}</h3>
+      <div class="bigTotal">${s.total}<small>/25</small></div>
+      <progress max="25" value="${s.total}"></progress>
+    `;
+    tile.addEventListener('click', () => highlightBar(idx));
+    tilesWrap.appendChild(tile);
+  });
+  Array.from(tilesWrap.children).forEach((el, i)=> el.classList.toggle('selected', i===highlightIndex));
+}
+
+const canvas = document.getElementById('chart');
+const ctx = canvas.getContext('2d');
+let currentOrder = gifts.map((g, i)=>i);
+
+function drawChart(scores){
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+
+  const pL = 70, pR = 30, pT = 40, pB = 120;
+  const chartW = W - pL - pR;
+  const chartH = H - pT - pB;
+
+  ctx.strokeStyle = '#e6ecff';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(pL, pT); ctx.lineTo(pL, H - pB); ctx.lineTo(W - pR, H - pB); ctx.stroke();
+
+  ctx.font = '18px ui-rounded, system-ui';
+  ctx.fillStyle = '#6b78a8';
+  for(let t=0; t<=25; t+=5){
+    const y = H - pB - (t/25)*chartH;
+    ctx.strokeStyle = '#f0f4ff';
+    ctx.beginPath(); ctx.moveTo(pL, y); ctx.lineTo(W-pR, y); ctx.stroke();
+    ctx.fillText(String(t), pL-36, y+6);
+  }
+
+  const yAvg = H - pB - (15/25)*chartH;
+  ctx.setLineDash([6,6]); ctx.strokeStyle = '#16c8a8';
+  ctx.beginPath(); ctx.moveTo(pL, yAvg); ctx.lineTo(W-pR, yAvg); ctx.stroke();
+  const yTop = H - pB - (20/25)*chartH;
+  ctx.strokeStyle = '#ffbe5a';
+  ctx.beginPath(); ctx.moveTo(pL, yTop); ctx.lineTo(W-pR, yTop); ctx.stroke();
+  ctx.setLineDash([]);
+
+  const n = scores.length;
+  const isNarrow = (canvas.clientWidth || W) < 560 || window.innerWidth < 760;
+  const gap = isNarrow ? 10 : 18;
+  const barW = (chartW - (n+1)*gap)/n;
+
+  scores.forEach((s, i) => {
+    const x = pL + gap + i*(barW+gap);
+    const h = (s.total/25)*chartH;
+    const y = H - pB - h;
+
+    const grad = ctx.createLinearGradient(0, y, 0, y+h);
+    grad.addColorStop(0, 'rgba(63,123,255,1)');
+    grad.addColorStop(1, 'rgba(138,107,255,1)');
+    ctx.fillStyle = grad;
+    ctx.globalAlpha = (i===highlightIndex || highlightIndex<0) ? 1 : .35;
+
+    const r = 10;
+    ctx.beginPath();
+    ctx.moveTo(x, H-pB);
+    ctx.lineTo(x, y+r);
+    ctx.quadraticCurveTo(x, y, x+r, y);
+    ctx.lineTo(x+barW-r, y);
+    ctx.quadraticCurveTo(x+barW, y, x+barW, y+r);
+    ctx.lineTo(x+barW, H-pB);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.save();
+    const gloss = ctx.createLinearGradient(x, y, x, y+h*0.4);
+    gloss.addColorStop(0, 'rgba(255,255,255,.7)');
+    gloss.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = gloss; ctx.globalAlpha=.5;
+    ctx.fillRect(x+3, y+3, barW-6, Math.max(6, h*0.18));
+    ctx.restore();
+
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#243056';
+    const isNarrow = (canvas.clientWidth || W) < 560 || window.innerWidth < 760;
+    const label = isNarrow ? shortName(s.name) : s.name;
+
+    ctx.save();
+    if (isNarrow) {
+      // bigger angle, anchor to the right edge of its own bar, allow “creep” under neighbor
+      ctx.translate(x + barW - 2, H - pB + 54);
+      ctx.rotate(-Math.PI / 4);           // ~-45°
+      ctx.textAlign = 'right';
+      ctx.font = '14px ui-rounded, system-ui';
+    } else {
+      ctx.translate(x + barW/2, H - pB + 46);
+      ctx.rotate(-Math.PI / 12);          // ~-15°
+      ctx.textAlign = 'center';
+      ctx.font = '18px ui-rounded, system-ui';
+    }
+    ctx.fillText(label, 0, 0);
+    ctx.restore();
+
+    ctx.fillStyle = '#0e1735';
+    ctx.font = '18px ui-rounded, system-ui';
+    ctx.fillText(s.total, x+barW/2-8, y-10);
+  });
+}
+
+function highlightBar(idx){
+  highlightIndex = (highlightIndex===idx) ? -1 : idx;
+  computeAndRender();
+}
+
+document.getElementById('sortAlpha').addEventListener('click', () => {
+  currentOrder.sort((a,b)=>gifts[a][0].localeCompare(gifts[b][0]));
+  computeAndRender();
+});
+document.getElementById('sortScore').addEventListener('click', () => {
+  const scores = computeScores();
+  currentOrder.sort((a,b)=> scores[b].total - scores[a].total);
+  computeAndRender();
+});
+
+function computeAndRender(){
+  const raw = computeScores();
+  const ordered = currentOrder.map(i => raw[i]);
+  renderTiles(ordered);
+  drawChart(ordered);
+  // keep the print image current after each render
+  try{
+    const img = document.getElementById('chartPrint');
+    if (img) img.src = canvas.toDataURL('image/png');
+  }catch(e){}
+}
+
+
+computeAndRender();
+</script>
+</body>
+</html>
